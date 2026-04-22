@@ -36,6 +36,16 @@ npm run dev:all
 
 Solo el servidor: `npm run server`.
 
+## Deploy (Docker / Dokploy)
+
+La imagen usa **un solo proceso Node** (`server/index.mjs`): API bajo `/api/*` y la SPA compilada desde `dist/`.
+
+1. En Dokploy, configura el servicio para **construir con Dockerfile** (no Nixpacks), o asegúrate de que exista `Dockerfile` en la raíz y que el builder lo detecte.
+2. **Puerto del contenedor:** `3000` (coincide con `PORT` por defecto en producción).
+3. **Variables de entorno:** `JWT_SECRET` obligatorio en producción; opcional `DATABASE_PATH` (y monta un volumen si quieres persistir SQLite fuera del contenedor).
+4. **Dominio:** activa HTTPS / certificado (Let’s Encrypt) en Dokploy; si solo hay HTTP y el navegador fuerza HTTPS, verás errores de conexión o certificado.
+5. Prueba local: `docker build -t prestamos .` y `docker run --rm -p 3000:3000 -e JWT_SECRET=dev-secret prestamos`.
+
 ## Estructura
 
 - `src/domain/` — tipos, amortización, store (local o remoto vía `remoteData.ts`).

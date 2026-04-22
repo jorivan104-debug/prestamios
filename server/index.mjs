@@ -1,4 +1,7 @@
 import { randomUUID } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
 import bcrypt from "bcryptjs";
@@ -8,7 +11,9 @@ import { buildAmortization, applyPaymentToState } from "./loan-math.mjs";
 
 const d = getDb;
 
-const PORT = Number(process.env.PORT || 3847);
+const PORT = Number(
+  process.env.PORT || (process.env.NODE_ENV === "production" ? 3000 : 3847)
+);
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "dev-insecure-change-in-production"
 );
@@ -619,9 +624,29 @@ app.patch("/api/orgs/:orgId/members/:targetUserId", async (req, res) => {
   return res.json({ ok: true });
 });
 
-app.use((_req, res) => {
-  res.status(404).json({ error: "not_found" });
-});
+// SPA estática (producción Docker): sirve dist/ y fallback a index.html
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const distDir = path.join(__dirname, "..", "dist");
+const spaIndex = path.join(distDir, "index.html");
+if (fs.existsSync(spaIndex)) {
+  app.use(express.static(distDir, { index: false }));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api")) {
+      return res.status(404).json({ error: "not_found" });
+    }
+    res.sendFile(spaIndex, (err) => (err ? next(err) : undefined));
+  });
+  app.use((req, res) => {
+    if (req.path.startsWith("/api")) {
+      return res.status(404).json({ error: "not_found" });
+    }
+    res.status(404).send("Not found");
+  });
+} else {
+  app.use((_req, res) => {
+    res.status(404).json({ error: "not_found" });
+  });
+}
 
 app.use((err, _req, res, _next) => {
   console.error(err);
@@ -629,5 +654,7 @@ app.use((err, _req, res, _next) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`API en http://127.0.0.1:${PORT} (db: ${process.env.DATABASE_PATH || "server/data/prestamos.sqlite"})`);
+  const dbPath = process.env.DATABASE_PATH || "server/data/prestamos.sqlite";
+  const spa = fs.existsSync(spaIndex) ? " + SPA" : "";
+  console.log(`Servidor http://0.0.0.0:${PORT}${spa} (db: ${dbPath})`);
 });
