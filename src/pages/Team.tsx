@@ -5,6 +5,7 @@ import {
   assignMemberRole,
   createRole,
   deleteRole,
+  inviteOrganizationMember,
   listOrganizationMembersRpc,
   listRolePermissionIds,
   listRoles,
@@ -40,6 +41,7 @@ export default function Team() {
   const canDeleteRoles = usePermission("roles.delete");
   const canAssign = usePermission("users.assign_role");
   const canSeeMembers = usePermission("roles.read") || usePermission("users.invite");
+  const canInvite = usePermission("users.invite");
 
   const [roles, setRoles] = useState<RoleRow[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -51,6 +53,12 @@ export default function Team() {
   const [newRoleName, setNewRoleName] = useState("");
   const [newRoleDesc, setNewRoleDesc] = useState("");
   const [saving, setSaving] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [invitePassword, setInvitePassword] = useState("");
+  const [inviteRoleId, setInviteRoleId] = useState("");
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteMsg, setInviteMsg] = useState<string | null>(null);
+  const [inviteErr, setInviteErr] = useState<string | null>(null);
 
   const selected = useMemo(
     () => roles.find((r) => r.id === selectedId) ?? null,
@@ -150,6 +158,28 @@ export default function Team() {
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Error al crear rol");
     }
+  };
+
+  const onInvite = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!organizationId || !inviteEmail.trim() || invitePassword.length < 6) return;
+    setInviteBusy(true);
+    setInviteErr(null);
+    setInviteMsg(null);
+    try {
+      await inviteOrganizationMember(organizationId, {
+        email: inviteEmail.trim(),
+        password: invitePassword,
+        roleId: inviteRoleId || undefined,
+      });
+      setInviteEmail("");
+      setInvitePassword("");
+      setInviteMsg("Usuario creado. Ya puede iniciar sesión con ese email y contraseña.");
+      await loadMembers();
+    } catch (ex) {
+      setInviteErr(ex instanceof Error ? ex.message : "No se pudo invitar");
+    }
+    setInviteBusy(false);
   };
 
   const onDeleteRole = async (id: string) => {
@@ -256,12 +286,14 @@ export default function Team() {
                           }
                         }}
                       >
-                        {roles.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.name}
-                            {r.is_system ? " (sistema)" : ""}
-                          </option>
-                        ))}
+                        {roles
+                          .filter((r) => !r.is_system || r.id === m.role_id)
+                          .map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.name}
+                              {r.is_system ? " (Propietario)" : ""}
+                            </option>
+                          ))}
                       </select>
                     </td>
                   ) : null}
@@ -270,9 +302,86 @@ export default function Team() {
             </tbody>
           </table>
         )}
-        <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>
-          Para añadir más cuentas: amplía el API (registro admin) o importa usuarios vía la base SQLite del servidor.
-        </p>
+        {canInvite ? (
+          <form
+            onSubmit={onInvite}
+            className="form-grid"
+            style={{
+              marginTop: 20,
+              paddingTop: 18,
+              borderTop: "1px solid var(--border, rgba(0,0,0,0.08))",
+            }}
+          >
+            <h3 className="page-title" style={{ fontSize: "1rem", gridColumn: "1 / -1", margin: 0 }}>
+              Dar de alta usuario
+            </h3>
+            <p className="muted" style={{ fontSize: 13, gridColumn: "1 / -1", margin: 0 }}>
+              Crea la cuenta aquí (no desde la página de registro público). No puedes asignar el rol
+              Propietario; elige otro rol o deja el predeterminado Colaborador.
+            </p>
+            {inviteErr ? (
+              <div className="chip danger" style={{ gridColumn: "1 / -1" }}>
+                {inviteErr}
+              </div>
+            ) : null}
+            {inviteMsg ? (
+              <div className="chip success" style={{ gridColumn: "1 / -1" }}>
+                {inviteMsg}
+              </div>
+            ) : null}
+            <div className="field">
+              <label htmlFor="invite-email">Email del nuevo usuario</label>
+              <input
+                id="invite-email"
+                type="email"
+                autoComplete="off"
+                required
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="invite-pass">Contraseña inicial (mín. 6)</label>
+              <input
+                id="invite-pass"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={6}
+                value={invitePassword}
+                onChange={(e) => setInvitePassword(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="invite-role">Rol</label>
+              <select
+                id="invite-role"
+                className="btn btn-ghost"
+                style={{ width: "100%", maxWidth: 320 }}
+                value={inviteRoleId}
+                onChange={(e) => setInviteRoleId(e.target.value)}
+              >
+                <option value="">Colaborador (predeterminado)</option>
+                {roles
+                  .filter((r) => !r.is_system)
+                  .map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div className="row" style={{ gridColumn: "1 / -1", justifyContent: "flex-end" }}>
+              <button type="submit" className="btn btn-primary" disabled={inviteBusy}>
+                {inviteBusy ? "Creando…" : "Crear usuario"}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>
+            Sin permiso <code className="mono">users.invite</code> no puedes dar de alta cuentas nuevas.
+          </p>
+        )}
       </div>
 
       <div className="row" style={{ alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>

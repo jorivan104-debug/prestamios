@@ -42,6 +42,39 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
 });
 
+/** Registro público solo si aún no hay usuarios (primer administrador). */
+app.get("/api/auth/registration-open", (_req, res) => {
+  const db = d();
+  const n = db.prepare("SELECT COUNT(*) AS c FROM users").get();
+  res.json({ open: Number(n.c) === 0 });
+});
+
+function insertCollaboratorRole(db, orgId) {
+  const collabId = randomUUID();
+  db.prepare(
+    "INSERT INTO roles (id, organization_id, name, description, is_system) VALUES (?, ?, ?, ?, 0)"
+  ).run(collabId, orgId, "Colaborador", "Usuario invitado — ajusta permisos en Equipo y roles", 0);
+  return collabId;
+}
+
+/** Rol no-Propietario para invitados; crea «Colaborador» si la org solo tiene roles de sistema. */
+function resolveInviteRoleId(db, orgId, requestedRoleId) {
+  const rid = String(requestedRoleId || "").trim();
+  if (rid) {
+    const r = db
+      .prepare("SELECT id, is_system FROM roles WHERE id = ? AND organization_id = ?")
+      .get(rid, orgId);
+    if (!r) return { error: "bad_role" };
+    if (r.is_system) return { error: "No se puede asignar el rol Propietario por invitación" };
+    return { roleId: r.id };
+  }
+  const any = db
+    .prepare("SELECT id FROM roles WHERE organization_id = ? AND is_system = 0 LIMIT 1")
+    .get(orgId);
+  if (any) return { roleId: any.id };
+  return { roleId: insertCollaboratorRole(db, orgId) };
+}
+
 app.post("/api/auth/register", async (req, res) => {
   const email = String(req.body?.email || "")
     .trim()
@@ -52,6 +85,13 @@ app.post("/api/auth/register", async (req, res) => {
     return res.status(400).json({ error: "Email y contraseña (mín. 6 caracteres) requeridos" });
   }
   const db = d();
+  const userCount = Number(db.prepare("SELECT COUNT(*) AS c FROM users").get().c);
+  if (userCount > 0) {
+    return res.status(403).json({
+      error:
+        "El registro público está desactivado. Solo el administrador puede crear usuarios desde Equipo.",
+    });
+  }
   const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
   if (existing) {
     return res.status(400).json({ error: "Ese email ya está registrado" });
@@ -80,6 +120,7 @@ app.post("/api/auth/register", async (req, res) => {
     db.prepare(
       "INSERT INTO organization_members (user_id, organization_id, role_id) VALUES (?, ?, ?)"
     ).run(userId, orgId, roleId);
+    insertCollaboratorRole(db, orgId);
   });
   try {
     run();
@@ -160,6 +201,7 @@ app.post("/api/auth/bootstrap", async (req, res) => {
     db.prepare(
       "INSERT INTO organization_members (user_id, organization_id, role_id) VALUES (?, ?, ?)"
     ).run(u.id, orgId, roleId);
+    insertCollaboratorRole(db, orgId);
   });
   try {
     run();
@@ -610,18 +652,72 @@ app.patch("/api/orgs/:orgId/members/:targetUserId", async (req, res) => {
     return res.status(403).json({ error: "forbidden" });
   }
   const roleId = String(req.body?.roleId || "");
-  const r = db.prepare("SELECT id FROM roles WHERE id = ? AND organization_id = ?").get(roleId, orgId);
-  if (!r) return res.status(400).json({ error: "bad_role" });
-  const m = db
-    .prepare("SELECT 1 FROM organization_members WHERE user_id = ? AND organization_id = ?")
+  const roleRow = db
+    .prepare("SELECT id, is_system FROM roles WHERE id = ? AND organization_id = ?")
+    .get(roleId, orgId);
+  if (!roleRow) return res.status(400).json({ error: "bad_role" });
+  const mem = db
+    .prepare("SELECT role_id FROM organization_members WHERE user_id = ? AND organization_id = ?")
     .get(targetUserId, orgId);
-  if (!m) return res.status(404).json({ error: "not_found" });
+  if (!mem) return res.status(404).json({ error: "not_found" });
+  const isSystemRole = Number(roleRow.is_system) === 1;
+  if (isSystemRole && mem.role_id !== roleId) {
+    return res.status(400).json({
+      error:
+        "No se puede asignar el rol Propietario: solo un administrador por organización y no se traspasa desde aquí.",
+    });
+  }
+  if (mem.role_id === roleId) {
+    return res.json({ ok: true });
+  }
   db.prepare("UPDATE organization_members SET role_id = ? WHERE user_id = ? AND organization_id = ?").run(
     roleId,
     targetUserId,
     orgId
   );
   return res.json({ ok: true });
+});
+
+app.post("/api/orgs/:orgId/members", async (req, res) => {
+  const u = await getAuthUser(req);
+  if (!u) return res.status(401).json({ error: "No autorizado" });
+  const { orgId } = req.params;
+  const db = d();
+  if (!isMember(db, u.id, orgId) || !userHasPermission(db, u.id, orgId, "users.invite")) {
+    return res.status(403).json({ error: "forbidden" });
+  }
+  const email = String(req.body?.email || "")
+    .trim()
+    .toLowerCase();
+  const password = String(req.body?.password || "");
+  if (!email || password.length < 6) {
+    return res.status(400).json({ error: "Email y contraseña (mín. 6 caracteres) requeridos" });
+  }
+  if (db.prepare("SELECT id FROM users WHERE email = ?").get(email)) {
+    return res.status(400).json({ error: "Ese email ya está registrado" });
+  }
+  const rolePick = resolveInviteRoleId(db, orgId, req.body?.roleId);
+  if (rolePick.error) {
+    return res.status(400).json({ error: rolePick.error });
+  }
+  const newUserId = randomUUID();
+  const hash = bcrypt.hashSync(password, 10);
+  try {
+    db.transaction(() => {
+      db.prepare("INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)").run(
+        newUserId,
+        email,
+        hash
+      );
+      db.prepare(
+        "INSERT INTO organization_members (user_id, organization_id, role_id) VALUES (?, ?, ?)"
+      ).run(newUserId, orgId, rolePick.roleId);
+    })();
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "No se pudo crear el usuario" });
+  }
+  return res.status(201).json({ user: { id: newUserId, email } });
 });
 
 // SPA estática (producción Docker): sirve dist/ y fallback a index.html
