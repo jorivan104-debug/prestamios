@@ -1,0 +1,16 @@
+node_modules
+dist
+.vite
+.DS_Store
+*.log
+server/data/*.sqlite
+server/data/*.sqlite-shm
+server/data/*.sqlite-wal
+.env
+.env.local
+
+# Artefactos de compilación / duplicados (fuente: .ts / .tsx)
+src/**/*.js
+vite.config.js
+vite.config.d.ts
+*.tsbuildinfo
