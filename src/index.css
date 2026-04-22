@@ -90,13 +90,6 @@ button { font: inherit; }
 .brand .muted {
   color: rgba(220, 252, 231, 0.72) !important;
 }
-.brand-logo {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  background: conic-gradient(from 210deg, var(--py-primary), var(--py-dark), var(--py-accent), var(--py-secondary), var(--py-primary));
-  box-shadow: 0 6px 22px rgba(22, 163, 74, 0.35);
-}
 .brand-logo-img {
   width: 34px;
   height: 34px;
@@ -356,6 +349,14 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
   justify-content: center;
   padding: 24px 16px;
 }
+.auth-logo {
+  display: block;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 14px;
+  object-fit: contain;
+  border-radius: 10px;
+}
 
 /* Landing: cabecera/pie oscuros, bloque central con aire claro */
 .landing {
@@ -375,9 +376,19 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
   backdrop-filter: blur(10px);
 }
 .landing-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-weight: 800;
   letter-spacing: 0.06em;
   color: var(--py-white);
+}
+.landing-brand-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 10px;
+  flex-shrink: 0;
 }
 .landing-nav { display: flex; gap: 10px; align-items: center; }
 .landing-header .btn {

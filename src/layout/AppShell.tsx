@@ -39,7 +39,13 @@ export default function AppShell() {
               height={34}
             />
           ) : (
-            <div className="brand-logo" />
+            <img
+              src="/img/logo.png"
+              alt=""
+              className="brand-logo-img"
+              width={34}
+              height={34}
+            />
           )}
           <div>
             <div>{org.name}</div>

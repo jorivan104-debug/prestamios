@@ -74,6 +74,7 @@ export default function Register() {
   return (
     <div className="auth-page">
       <div className="card" style={{ maxWidth: 420, width: "100%" }}>
+        <img src="/img/logo.png" alt="" className="auth-logo" />
         <h1 className="page-title" style={{ fontSize: "1.35rem" }}>
           Crear cuenta
         </h1>

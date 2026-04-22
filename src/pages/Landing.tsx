@@ -15,7 +15,10 @@ export default function Landing() {
   return (
     <div className="landing">
       <header className="landing-header">
-        <div className="landing-brand">PrestaYa</div>
+        <div className="landing-brand">
+          <img src="/img/logo.png" alt="" className="landing-brand-logo" width={36} height={36} />
+          <span>PrestaYa</span>
+        </div>
         <nav className="landing-nav">
           <Link to="/login" className="btn btn-ghost">
             Iniciar sesión
