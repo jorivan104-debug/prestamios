@@ -190,10 +190,10 @@ export default function NewLoan() {
 
         <div
           style={{
-            border: "1px solid #2a3f7a",
+            border: "1px solid rgba(22, 101, 52, 0.28)",
             borderRadius: 12,
             padding: 16,
-            background: "linear-gradient(180deg, #101c3d 0%, #0c1631 100%)",
+            background: "linear-gradient(180deg, #ecfdf5 0%, #d8f5e0 100%)",
             marginBottom: 16,
           }}
         >
@@ -260,7 +260,7 @@ export default function NewLoan() {
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr style={{ background: "#0c1631" }}>
+                  <tr style={{ background: "rgba(22, 101, 52, 0.12)" }}>
                     <td colSpan={2}>
                       <strong>Totales</strong>
                     </td>

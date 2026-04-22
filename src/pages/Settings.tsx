@@ -104,7 +104,7 @@ export default function Settings() {
                 borderRadius: 12,
                 border: "1px solid var(--border)",
                 overflow: "hidden",
-                background: "#0b1430",
+                background: "var(--input-bg)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",

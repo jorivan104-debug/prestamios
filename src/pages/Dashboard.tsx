@@ -74,7 +74,7 @@ export default function Dashboard() {
         </div>
         <div className="card">
           <div className="stat-label">Cuotas en mora</div>
-          <div className="stat-value mono" style={{ color: overdue.length ? "#fca5a5" : undefined }}>
+          <div className="stat-value mono" style={{ color: overdue.length ? "#b91c1c" : undefined }}>
             {integer(overdue.length)}
           </div>
           <div className="stat-sub">Cobrado total: {money(totalPaid)}</div>

@@ -18,7 +18,7 @@ export default function AppShell() {
   const canSettings = usePermission("org.settings.manage");
 
   useEffect(() => {
-    document.title = `${org.name} · Gestor de préstamos`;
+    document.title = `${org.name} · PrestaYa`;
   }, [org.name]);
 
   const dataHint =
@@ -44,7 +44,7 @@ export default function AppShell() {
           <div>
             <div>{org.name}</div>
             <div className="muted" style={{ fontSize: 12, fontWeight: 400 }}>
-              Gestor de préstamos
+              PrestaYa
             </div>
           </div>
         </div>
