@@ -45,8 +45,9 @@ app.get("/api/health", (_req, res) => {
 /** Registro público solo si aún no hay usuarios (primer administrador). */
 app.get("/api/auth/registration-open", (_req, res) => {
   const db = d();
-  const n = db.prepare("SELECT COUNT(*) AS c FROM users").get();
-  res.json({ open: Number(n.c) === 0 });
+  const row = db.prepare("SELECT COUNT(*) AS c FROM users").get();
+  const c = row != null && row.c != null ? Number(row.c) : 0;
+  res.json({ open: c === 0 });
 });
 
 function insertCollaboratorRole(db, orgId) {
@@ -85,7 +86,9 @@ app.post("/api/auth/register", async (req, res) => {
     return res.status(400).json({ error: "Email y contraseña (mín. 6 caracteres) requeridos" });
   }
   const db = d();
-  const userCount = Number(db.prepare("SELECT COUNT(*) AS c FROM users").get().c);
+  const countRow = db.prepare("SELECT COUNT(*) AS c FROM users").get();
+  const userCount =
+    countRow != null && countRow.c != null ? Number(countRow.c) : 0;
   if (userCount > 0) {
     return res.status(403).json({
       error:

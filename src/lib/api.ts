@@ -19,14 +19,19 @@ export function setToken(t: string | null): void {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
-/** `true` solo si el servidor permite el primer registro público (aún no hay usuarios). */
+/**
+ * Si el servidor responde: `true` solo cuando aún no hay usuarios (primer administrador).
+ * Si la petición falla (red, proxy, API caída): devuelve `true` para no bloquear el formulario;
+ * el `POST /api/auth/register` sigue siendo la fuente de verdad.
+ */
 export async function fetchRegistrationOpen(): Promise<boolean> {
   if (!isApiEnabled()) return false;
   try {
-    const data = await apiJson<{ open: boolean }>("/api/auth/registration-open", { method: "GET" });
-    return Boolean(data.open);
+    const data = await apiJson<{ open?: boolean }>("/api/auth/registration-open", { method: "GET" });
+    if (data && typeof data.open === "boolean") return data.open;
+    return true;
   } catch {
-    return false;
+    return true;
   }
 }
 
