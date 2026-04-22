@@ -13,7 +13,6 @@ import Login from "./pages/Login";
 import NewClient from "./pages/NewClient";
 import NewLoan from "./pages/NewLoan";
 import Payments from "./pages/Payments";
-import Register from "./pages/Register";
 import Settings from "./pages/Settings";
 import Team from "./pages/Team";
 
@@ -22,7 +21,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      <Route path="/register" element={<Navigate to="/login" replace />} />
       <Route path="/app" element={<RequireAuth />}>
         <Route element={<StoreShell />}>
           <Route element={<AppShell />}>

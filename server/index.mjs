@@ -42,12 +42,9 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
 });
 
-/** Registro público solo si aún no hay usuarios (primer administrador). */
+/** Registro público deshabilitado (administrador creado por el servidor al iniciar). */
 app.get("/api/auth/registration-open", (_req, res) => {
-  const db = d();
-  const row = db.prepare("SELECT COUNT(*) AS c FROM users").get();
-  const c = row != null && row.c != null ? Number(row.c) : 0;
-  res.json({ open: c === 0 });
+  res.json({ open: false });
 });
 
 function insertCollaboratorRole(db, orgId) {
@@ -76,70 +73,10 @@ function resolveInviteRoleId(db, orgId, requestedRoleId) {
   return { roleId: insertCollaboratorRole(db, orgId) };
 }
 
-app.post("/api/auth/register", async (req, res) => {
-  const email = String(req.body?.email || "")
-    .trim()
-    .toLowerCase();
-  const password = String(req.body?.password || "");
-  const orgName = String(req.body?.orgName || "Mi organización").trim() || "Mi organización";
-  if (!email || password.length < 6) {
-    return res.status(400).json({ error: "Email y contraseña (mín. 6 caracteres) requeridos" });
-  }
-  const db = d();
-  const countRow = db.prepare("SELECT COUNT(*) AS c FROM users").get();
-  const userCount =
-    countRow != null && countRow.c != null ? Number(countRow.c) : 0;
-  if (userCount > 0) {
-    return res.status(403).json({
-      error:
-        "El registro público está desactivado. Solo el administrador puede crear usuarios desde Equipo.",
-    });
-  }
-  const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
-  if (existing) {
-    return res.status(400).json({ error: "Ese email ya está registrado" });
-  }
-  const userId = randomUUID();
-  const orgId = randomUUID();
-  const roleId = randomUUID();
-  const hash = bcrypt.hashSync(password, 10);
-  const allPermIds = db.prepare("SELECT id FROM permissions").all().map((x) => x.id);
-  const run = db.transaction(() => {
-    db.prepare("INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)").run(
-      userId,
-      email,
-      hash
-    );
-    db.prepare(
-      "INSERT INTO organizations (id, name) VALUES (?, ?)"
-    ).run(orgId, orgName);
-    db.prepare(
-      "INSERT INTO roles (id, organization_id, name, description, is_system) VALUES (?, ?, ?, ?, 1)"
-    ).run(roleId, orgId, "Propietario", "Control total del sistema");
-    const insRP = db.prepare("INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)");
-    for (const pid of allPermIds) {
-      insRP.run(roleId, pid);
-    }
-    db.prepare(
-      "INSERT INTO organization_members (user_id, organization_id, role_id) VALUES (?, ?, ?)"
-    ).run(userId, orgId, roleId);
-    insertCollaboratorRole(db, orgId);
-  });
-  try {
-    run();
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "No se pudo registrar" });
-  }
-  const token = await new jose.SignJWT({ sub: userId, email })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("7d")
-    .sign(JWT_SECRET);
-  return res.json({
-    accessToken: token,
-    user: { id: userId, email },
-    organizationId: orgId,
+app.post("/api/auth/register", (_req, res) => {
+  return res.status(403).json({
+    error:
+      "El registro público no está disponible. Usa la cuenta administradora del sistema (inicio de sesión).",
   });
 });
 

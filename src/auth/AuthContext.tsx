@@ -24,7 +24,6 @@ type AuthContextValue = {
   permissions: Set<string>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
-  signUp: (email: string, password: string, orgName: string) => Promise<{ error?: string }>;
   bootstrapOrganization: (name: string) => Promise<{ error?: string }>;
   refreshPermissions: () => Promise<void>;
 };
@@ -133,29 +132,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPermissions(new Set());
   }, [configured]);
 
-  const signUp = useCallback(
-    async (email: string, password: string, orgName: string) => {
-      if (!configured) return { error: "API no activada" };
-      try {
-        const data = await apiJson<{
-          accessToken: string;
-          user: SimpleUser;
-          organizationId: string;
-        }>("/api/auth/register", {
-          method: "POST",
-          body: JSON.stringify({ email, password, orgName }),
-        });
-        setToken(data.accessToken);
-        const me = await fetchMe();
-        applyMe(me);
-        return {};
-      } catch (e) {
-        return { error: e instanceof Error ? e.message : "Error al registrarse" };
-      }
-    },
-    [applyMe, configured]
-  );
-
   const bootstrapOrganization = useCallback(
     async (name: string) => {
       if (!configured) return { error: "API no activada" };
@@ -183,7 +159,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       permissions,
       signIn,
       signOut,
-      signUp,
       bootstrapOrganization,
       refreshPermissions,
     }),
@@ -195,7 +170,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       permissions,
       signIn,
       signOut,
-      signUp,
       bootstrapOrganization,
       refreshPermissions,
     ]

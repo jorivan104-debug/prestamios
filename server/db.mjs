@@ -1,6 +1,8 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
+import { randomUUID } from "node:crypto";
+import bcrypt from "bcryptjs";
 import Database from "better-sqlite3";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -20,7 +22,68 @@ export function getDb() {
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   initSchema(db);
+  seedDefaultAdminIfMissing(db);
   return db;
+}
+
+/**
+ * Crea el administrador inicial si no existe (email/contraseña por env o valores por defecto).
+ * No sobrescribe contraseña si el usuario ya existe.
+ */
+function seedDefaultAdminIfMissing(database) {
+  const email = String(process.env.DEFAULT_ADMIN_EMAIL || "admin@app-sprint.com")
+    .trim()
+    .toLowerCase();
+  const password = String(process.env.DEFAULT_ADMIN_PASSWORD ?? "admin");
+  const orgName =
+    String(process.env.DEFAULT_ORG_NAME || "Organización principal").trim() ||
+    "Organización principal";
+
+  const existing = database.prepare("SELECT id FROM users WHERE email = ? COLLATE NOCASE").get(email);
+  if (existing) return;
+
+  const userId = randomUUID();
+  const orgId = randomUUID();
+  const ownerRoleId = randomUUID();
+  const collabRoleId = randomUUID();
+  const hash = bcrypt.hashSync(password, 10);
+  const allPermIds = database.prepare("SELECT id FROM permissions").all().map((x) => x.id);
+
+  const run = database.transaction(() => {
+    database.prepare("INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)").run(
+      userId,
+      email,
+      hash
+    );
+    database.prepare("INSERT INTO organizations (id, name) VALUES (?, ?)").run(orgId, orgName);
+    database
+      .prepare(
+        "INSERT INTO roles (id, organization_id, name, description, is_system) VALUES (?, ?, ?, ?, 1)"
+      )
+      .run(ownerRoleId, orgId, "Propietario", "Control total del sistema");
+    const insRP = database.prepare(
+      "INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)"
+    );
+    for (const pid of allPermIds) {
+      insRP.run(ownerRoleId, pid);
+    }
+    database
+      .prepare(
+        "INSERT INTO organization_members (user_id, organization_id, role_id) VALUES (?, ?, ?)"
+      )
+      .run(userId, orgId, ownerRoleId);
+    database
+      .prepare(
+        "INSERT INTO roles (id, organization_id, name, description, is_system) VALUES (?, ?, ?, ?, 0)"
+      )
+      .run(collabRoleId, orgId, "Colaborador", "Usuario invitado — ajusta permisos en Equipo");
+  });
+
+  try {
+    run();
+  } catch (e) {
+    console.error("seedDefaultAdminIfMissing:", e);
+  }
 }
 
 function initSchema(database) {

@@ -34,6 +34,13 @@ npm run dev:all
 - Front: `http://localhost:5173` (proxy `/api` al servidor).
 - API: `http://127.0.0.1:3847` (base de datos en `server/data/prestamos.sqlite`).
 
+**No hay registro público.** Al iniciar el servidor, si no existe el usuario administrador, se crea uno con organización y rol Propietario:
+
+- Email por defecto: `admin@app-sprint.com`
+- Contraseña por defecto: `admin`
+
+Sobrescribe con variables de entorno del **servidor**: `DEFAULT_ADMIN_EMAIL`, `DEFAULT_ADMIN_PASSWORD`, `DEFAULT_ORG_NAME`. Más usuarios: el administrador los da de alta en **Equipo** (permiso `users.invite`).
+
 Solo el servidor: `npm run server`.
 
 ## Deploy (Docker / Dokploy)
@@ -42,7 +49,7 @@ La imagen usa **un solo proceso Node** (`server/index.mjs`): API bajo `/api/*` y
 
 1. En Dokploy, configura el servicio para **construir con Dockerfile** (no Nixpacks), o asegúrate de que exista `Dockerfile` en la raíz y que el builder lo detecte.
 2. **Puerto del contenedor:** `3000` (coincide con `PORT` por defecto en producción).
-3. **Variables de entorno:** `JWT_SECRET` obligatorio en producción; opcional `DATABASE_PATH` (y monta un volumen si quieres persistir SQLite fuera del contenedor).
+3. **Variables de entorno:** `JWT_SECRET` obligatorio en producción; opcional `DATABASE_PATH` (volumen para SQLite). Define **`DEFAULT_ADMIN_EMAIL`** y **`DEFAULT_ADMIN_PASSWORD`** en producción (no uses la contraseña por defecto en internet).
 4. **Dominio:** activa HTTPS / certificado (Let’s Encrypt) en Dokploy; si solo hay HTTP y el navegador fuerza HTTPS, verás errores de conexión o certificado.
 5. Prueba local: `docker build -t prestamos .` y `docker run --rm -p 3000:3000 -e JWT_SECRET=dev-secret prestamos`.
 

@@ -19,22 +19,6 @@ export function setToken(t: string | null): void {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
-/**
- * Si el servidor responde: `true` solo cuando aún no hay usuarios (primer administrador).
- * Si la petición falla (red, proxy, API caída): devuelve `true` para no bloquear el formulario;
- * el `POST /api/auth/register` sigue siendo la fuente de verdad.
- */
-export async function fetchRegistrationOpen(): Promise<boolean> {
-  if (!isApiEnabled()) return false;
-  try {
-    const data = await apiJson<{ open?: boolean }>("/api/auth/registration-open", { method: "GET" });
-    if (data && typeof data.open === "boolean") return data.open;
-    return true;
-  } catch {
-    return true;
-  }
-}
-
 export async function apiJson<T>(path: string, init: RequestInit = {}): Promise<T> {
   const base = getApiBase();
   const url = path.startsWith("http") ? path : `${base}${path.startsWith("/") ? path : `/${path}`}`;

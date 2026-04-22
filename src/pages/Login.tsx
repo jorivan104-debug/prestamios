@@ -1,8 +1,9 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD_HINT } from "../lib/defaultAdmin";
 import { appPath } from "../lib/routes";
-import { fetchRegistrationOpen, isApiEnabled } from "../lib/api";
+import { isApiEnabled } from "../lib/api";
 
 export default function Login() {
   const { signIn, user, configured, ready } = useAuth();
@@ -17,16 +18,6 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [registrationOpen, setRegistrationOpen] = useState(false);
-
-  const registrationClosedNotice = Boolean(
-    (location.state as { registrationClosed?: boolean } | null)?.registrationClosed
-  );
-
-  useEffect(() => {
-    if (!configured) return;
-    void fetchRegistrationOpen().then(setRegistrationOpen);
-  }, [configured]);
 
   useEffect(() => {
     if (!configured || !ready || !user) return;
@@ -68,12 +59,16 @@ export default function Login() {
         <p className="page-subtitle" style={{ marginBottom: 18 }}>
           Accede a tu organización y datos en la nube.
         </p>
+        <div className="chip" style={{ marginBottom: 14, fontSize: 13, lineHeight: 1.45 }}>
+          Cuenta administradora por defecto:{" "}
+          <strong className="mono">{DEFAULT_ADMIN_EMAIL}</strong> / contraseña:{" "}
+          <strong className="mono">{DEFAULT_ADMIN_PASSWORD_HINT}</strong>
+          <span className="muted">
+            {" "}
+            (cámbiala en producción con variables <span className="mono">DEFAULT_ADMIN_*</span> en el servidor).
+          </span>
+        </div>
         <form onSubmit={onSubmit} className="form-grid">
-          {registrationClosedNotice ? (
-            <div className="chip" style={{ gridColumn: "1 / -1" }}>
-              El registro público está cerrado. Pide al administrador que te dé de alta en Equipo.
-            </div>
-          ) : null}
           {err ? (
             <div className="chip danger" style={{ gridColumn: "1 / -1" }}>
               {err}
@@ -108,12 +103,7 @@ export default function Login() {
           </div>
         </form>
         <p className="muted" style={{ marginTop: 16, fontSize: 13 }}>
-          {registrationOpen ? (
-            <>
-              ¿Sin cuenta? <Link to="/register">Crear cuenta (solo primer usuario)</Link>
-              {" · "}
-            </>
-          ) : null}
+          Más usuarios: el administrador los crea en <strong>Equipo</strong>.{" "}
           <Link to="/">Volver al inicio</Link>
         </p>
       </div>

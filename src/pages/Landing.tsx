@@ -1,16 +1,9 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { appPath } from "../lib/routes";
-import { fetchRegistrationOpen, isApiEnabled } from "../lib/api";
+import { isApiEnabled } from "../lib/api";
 
 export default function Landing() {
   const hasBackend = isApiEnabled();
-  const [registrationOpen, setRegistrationOpen] = useState(false);
-
-  useEffect(() => {
-    if (!hasBackend) return;
-    void fetchRegistrationOpen().then(setRegistrationOpen);
-  }, [hasBackend]);
 
   return (
     <div className="landing">
@@ -20,14 +13,11 @@ export default function Landing() {
           <span>PrestaYa</span>
         </div>
         <nav className="landing-nav">
-          <Link to="/login" className="btn btn-ghost">
-            Iniciar sesión
-          </Link>
-          {hasBackend && registrationOpen ? (
-            <Link to="/register" className="btn btn-primary">
-              Primer administrador
+          {hasBackend ? (
+            <Link to="/login" className="btn btn-primary">
+              Iniciar sesión
             </Link>
-          ) : hasBackend ? null : (
+          ) : (
             <Link to={appPath("/")} className="btn btn-primary">
               Entrar (demo)
             </Link>
