@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { appPath } from "../lib/routes";
-import { isApiEnabled } from "../lib/api";
+import { fetchRegistrationOpen, isApiEnabled } from "../lib/api";
 
 export default function Register() {
   const { signUp, user, configured, ready } = useAuth();
@@ -13,6 +13,12 @@ export default function Register() {
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!configured) return;
+    void fetchRegistrationOpen().then(setRegistrationOpen);
+  }, [configured]);
 
   useEffect(() => {
     if (!configured || !ready || !user) return;
@@ -21,6 +27,24 @@ export default function Register() {
 
   if (!isApiEnabled()) {
     return <Navigate to={appPath("/")} replace />;
+  }
+
+  if (registrationOpen === false) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ registrationClosed: true }}
+      />
+    );
+  }
+
+  if (registrationOpen === null) {
+    return (
+      <div className="auth-page">
+        <p className="muted">Comprobando registro…</p>
+      </div>
+    );
   }
 
   const onSubmit = async (e: FormEvent) => {
@@ -54,7 +78,8 @@ export default function Register() {
           Crear cuenta
         </h1>
         <p className="page-subtitle" style={{ marginBottom: 18 }}>
-          Registro con email y nombre de organización. El primer usuario recibe el rol Propietario.
+          Solo disponible cuando aún no hay usuarios: creas la organización y quedas como Propietario.
+          Después, nuevas cuentas las da de alta un administrador en Equipo.
         </p>
         <form onSubmit={onSubmit} className="form-grid">
           {err ? (

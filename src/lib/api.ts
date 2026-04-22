@@ -19,6 +19,17 @@ export function setToken(t: string | null): void {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
+/** `true` solo si el servidor permite el primer registro público (aún no hay usuarios). */
+export async function fetchRegistrationOpen(): Promise<boolean> {
+  if (!isApiEnabled()) return false;
+  try {
+    const data = await apiJson<{ open: boolean }>("/api/auth/registration-open", { method: "GET" });
+    return Boolean(data.open);
+  } catch {
+    return false;
+  }
+}
+
 export async function apiJson<T>(path: string, init: RequestInit = {}): Promise<T> {
   const base = getApiBase();
   const url = path.startsWith("http") ? path : `${base}${path.startsWith("/") ? path : `/${path}`}`;

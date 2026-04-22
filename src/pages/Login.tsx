@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { appPath } from "../lib/routes";
-import { isApiEnabled } from "../lib/api";
+import { fetchRegistrationOpen, isApiEnabled } from "../lib/api";
 
 export default function Login() {
   const { signIn, user, configured, ready } = useAuth();
@@ -17,6 +17,16 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [registrationOpen, setRegistrationOpen] = useState(false);
+
+  const registrationClosedNotice = Boolean(
+    (location.state as { registrationClosed?: boolean } | null)?.registrationClosed
+  );
+
+  useEffect(() => {
+    if (!configured) return;
+    void fetchRegistrationOpen().then(setRegistrationOpen);
+  }, [configured]);
 
   useEffect(() => {
     if (!configured || !ready || !user) return;
@@ -58,6 +68,11 @@ export default function Login() {
           Accede a tu organización y datos en la nube.
         </p>
         <form onSubmit={onSubmit} className="form-grid">
+          {registrationClosedNotice ? (
+            <div className="chip" style={{ gridColumn: "1 / -1" }}>
+              El registro público está cerrado. Pide al administrador que te dé de alta en Equipo.
+            </div>
+          ) : null}
           {err ? (
             <div className="chip danger" style={{ gridColumn: "1 / -1" }}>
               {err}
@@ -92,8 +107,12 @@ export default function Login() {
           </div>
         </form>
         <p className="muted" style={{ marginTop: 16, fontSize: 13 }}>
-          ¿Sin cuenta? <Link to="/register">Crear cuenta</Link>
-          {" · "}
+          {registrationOpen ? (
+            <>
+              ¿Sin cuenta? <Link to="/register">Crear cuenta (solo primer usuario)</Link>
+              {" · "}
+            </>
+          ) : null}
           <Link to="/">Volver al inicio</Link>
         </p>
       </div>

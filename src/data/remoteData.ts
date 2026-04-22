@@ -273,3 +273,13 @@ export async function assignMemberRole(
     body: JSON.stringify({ roleId }),
   });
 }
+
+export async function inviteOrganizationMember(
+  organizationId: string,
+  body: { email: string; password: string; roleId?: string }
+): Promise<{ user: { id: string; email: string } }> {
+  return await apiJson(`/api/orgs/${organizationId}/members`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
